@@ -3,18 +3,22 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerCamera : MonoBehaviour {
-    public float tiltAmount = 3.5f;
-    public float catchUpSpeed = 20f;
-    public float tiltLerpSpeed = 10f;
-    public float xBobAmplitude = 0.01f;
-    public float yBobAmplitude = 0.1f;
-    public float headHeight = 1.66f;
-    public float bobSpeed = 20f;
-    public float fov = 70f;
-    public float bonusFov = 20f;
-    public int bobLevels = 4;
-    public float weaponBobAmount = 0.1f;
-    public float weaponBobCatchUpSpeed = 15f;
+    [SerializeField] private float tiltAmount = 3.5f;
+    [SerializeField] private float catchUpSpeed = 20f;
+    [SerializeField] private float tiltLerpSpeed = 10f;
+    [SerializeField] private float xBobAmplitude = 0.01f;
+    [SerializeField] private float yBobAmplitude = 0.1f;
+    [SerializeField] private float headHeight = 1.66f;
+    [SerializeField] private float headHeightWhenCrouching = 0.3f;
+    [SerializeField] private float bobSpeed = 20f;
+    [SerializeField] private float fov = 70f;
+    [SerializeField] private float bonusFov = 20f;
+    [SerializeField] private float bobLevels = 4;
+    [SerializeField] private float weaponBobAmount = 0.1f;
+    [SerializeField] private float weaponBobCatchUpSpeed = 15f;
+    [SerializeField] private Animator handsAnimator;
+    [SerializeField] private Renderer handsRenderer;
+    [SerializeField] private Transform foregroundHands;
 
     public PlayerMovement player;
     public Weapon weapon;
@@ -22,18 +26,18 @@ public class PlayerCamera : MonoBehaviour {
     float smoothPlayerSpeedAmount = 0f;
     float currentTilt = 0f;
     new Camera camera;
-    Vector3 weaponAnchor;
+    Vector3 foregroundAnchor;
 
     // Start is called before the first frame update
     void Start() {
         camera = GetComponent<Camera>();
-        weaponAnchor = weapon.transform.localPosition;
+        foregroundAnchor = foregroundHands.localPosition;
     }
 
     // Update is called once per frame
     void Update() {
 
-        var speedAmount = player.Speed / player.maxPlanarSpeed;
+        var speedAmount = player.Speed / player.MaxPlanarSpeed;
         var speedAmountForBob = Mathf.Round(speedAmount * bobLevels) / bobLevels;
 
         smoothPlayerSpeedAmount = Mathf.Lerp(smoothPlayerSpeedAmount, speedAmount, 4f * Time.deltaTime);
@@ -44,22 +48,55 @@ public class PlayerCamera : MonoBehaviour {
         currentTilt = Mathf.Lerp(currentTilt, tilt, tiltLerpSpeed * Time.deltaTime);
 
         var inputMouse = new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y"));
-        transform.Rotate(-Vector3.right * inputMouse.y * Time.deltaTime * player.mouseSensitivity, Space.Self);
+        transform.Rotate(-Vector3.right * inputMouse.y * Time.deltaTime * player.MouseSensitivity, Space.Self);
         transform.eulerAngles = new Vector3(transform.eulerAngles.x, player.transform.eulerAngles.y, player.transform.eulerAngles.z + currentTilt);
 
         var bobDisplacement = GetBobDisplacement(player.IsGrounded ? speedAmountForBob : 0f);
 
-        var weaponBob = GetBobDisplacement(player.IsGrounded ? smoothPlayerSpeedAmount : 0f) * weaponBobAmount;
-        weapon.transform.localPosition = Vector3.Lerp(weapon.transform.localPosition , weaponAnchor + new Vector3(weaponBob.x, weaponBob.y, 0), weaponBobCatchUpSpeed * Time.deltaTime);
-
         var target = player.transform.position;
-        target += transform.up * headHeight;
+        target += transform.up * ((player.IsCrouching ? headHeightWhenCrouching : headHeight) - player.GroundColliderRadius);
         target += transform.right * bobDisplacement.x;
         target += transform.up * bobDisplacement.y;
         transform.position = Vector3.Lerp(transform.position, target, catchUpSpeed * Time.deltaTime);
 
-        if (Input.GetButtonDown("Fire1")) {
-            weapon.Fire();
+        // Unused
+        if (weapon) {
+            if (Input.GetButtonDown("Fire1")) {
+                weapon.Fire();
+            }
+        }
+
+        var weaponBob = GetBobDisplacement(player.IsGrounded ? smoothPlayerSpeedAmount : 0f) * weaponBobAmount;
+        foregroundHands.localPosition = Vector3.Lerp(foregroundHands.localPosition, foregroundAnchor + new Vector3(weaponBob.x, weaponBob.y, 0), weaponBobCatchUpSpeed * Time.deltaTime);
+
+        // Hands
+        handsAnimator.SetBool("IsCrouching", player.IsCrouching && player.IsGrounded);
+
+        handsAnimator.speed = smoothPlayerSpeedAmount / player.CrouchingSpeedReduction;
+
+        if (player.IsCrouching && player.IsGrounded) {
+            handsRenderer.enabled = true;
+            float angle = foregroundHands.localEulerAngles.z;
+
+            foregroundHands.eulerAngles = player.transform.eulerAngles + Vector3.up*-90;
+
+            // Covnert to 180s
+
+            // reduce the angle  
+            angle = angle % 360;
+
+            // force it to be the positive remainder, so that 0 <= angle < 360  
+            angle = (angle + 360) % 360;
+
+            // force into the minimum absolute value residue class, so that -180 < angle <= 180  
+            if (angle > 180) {
+                angle -= 360;
+            }
+
+            foregroundHands.localPosition += Vector3.up * Mathf.Min(0f, (angle / 90f) * 0.25f);
+        }
+        else {
+            handsRenderer.enabled = false;
         }
     }
 
