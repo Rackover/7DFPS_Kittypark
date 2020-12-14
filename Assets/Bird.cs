@@ -4,83 +4,70 @@ using UnityEngine;
 
 public class Bird : MonoBehaviour
 {
-    public float flapChance = 0.2f;
-    public float hopChance = 0.5f;
+    [SerializeField] float flightTime = 2f;
 
+    public BirdSpot currentSpot;
+    public Animator birdAnimator;
+
+    public int id;
     bool isFlying = false;
     bool isOnGround = false;
-    float courage = 0f;
-    BirdSpot currentSpot;
-
-    // 1) Pick resting spot
-    // 2) At some point, take a random decision between other resting spot and non resting with no cats
-    // 3) If non resting, hop around a little bit until someone attacks
-    // 4) Try to flee if getting too close
-    // X) Flap once in a while
 
     // Start is called before the first frame update
-    void Start()
-    {
-        courage = Random.value;
+    void Start() {
+        RefreshFromSpot();
+    }
 
-        var spot = BirdSpot.GetRestingSpot();
-        transform.position = spot.transform.position;
+    public void RefreshFromSpot() {
+        transform.position = currentSpot.transform.position;
         transform.LookAt(new Vector3(0, transform.position.y, 0));
-
-        StartCoroutine(AI());
-    }
-    
-    IEnumerator AI(){
-        // Offset
-        yield return new WaitForSeconds(Random.value);
-
-        while (true){
-            if (isOnGround) {
-                
-                if (IsPlayerNearby()){
-                    
-                }
-
-                if (Random.value > hopChance){
-                    Hop();
-                }
-                else{
-                    PickGrain();
-                }
-            }
-            else{
-                MoveHead();
-            }
-
-            yield return new WaitForSeconds(0.25f);
-        }
     }
 
-    void Flap(){
-
+    public void Flap(){
+        Debug.Log("Flap");
+        transform.LookAt(new Vector3(0, transform.position.y, 0));
+        // Play flap animation
     }
 
-    void Hop(){
-
+    public void Hop(){
+        Vector3 targetPosition = Vector3.Lerp(transform.position + Vector3.right * Random.value + Vector3.up * Random.value, currentSpot.transform.position, 0.5f);
+        StartCoroutine(Coroutine_HopTo(targetPosition));
     }
 
-    void PickGrain(){
-
+    public void PickGrain() {
+        Debug.Log("Pick");
+        // Play grain animation
     }
 
-    void MoveHead(){
 
+    public void FlyTo(BirdSpot spot){
+        StartCoroutine(Coroutine_FlyTo(spot));
     }
 
-    void FlyTo(BirdSpot spot){
+    IEnumerator Coroutine_FlyTo(BirdSpot spot) {
+        isFlying = true;
+        currentSpot = spot;
 
-    }
-
-    bool IsPlayerNearby(){
-        if (!currentSpot){
-            return false;
+        float time = 0f;
+        float delta = 1 / 60f;
+        Vector3 startPosition = this.transform.position;
+        while(Vector3.Distance(this.transform.position, spot.transform.position) > 0.04f) {
+            this.transform.position = Vector3.Lerp(startPosition, spot.transform.position, time);
+            time += delta / flightTime;
+            yield return new WaitForSeconds(delta);
         }
 
-        return Game.i.players.FindAll(o=>Vector3.Distance(currentSpot.transform.position, o.transform.position) > currentSpot.safeDistance * (1f-courage)).Count > 0;
+        RefreshFromSpot();
+
+        isFlying = false;
+    }
+
+    IEnumerator Coroutine_HopTo(Vector3 targetPosition) {
+        float steps = 10f; // Keep that FLOAT thanks
+        Vector3 startPosition = transform.position;
+        for (int i = 1; i <= steps; i++) {
+            transform.position = Vector3.Lerp(startPosition, targetPosition, steps / i);
+            yield return new WaitForEndOfFrame();
+        }
     }
 }

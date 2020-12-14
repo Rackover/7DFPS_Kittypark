@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour {
+    [SerializeField] Player playerScript;
+
     [SerializeField] private float mouseSensitivity = 20f;
     [SerializeField] private float gravity = 20f;
     [SerializeField] private float accelerationSpeed = 20f;
@@ -30,6 +32,8 @@ public class PlayerMovement : MonoBehaviour {
     public bool IsGrounded => isGrounded;
     public float GroundColliderRadius => groundCollider.radius;
     public bool IsCrouching => isCrouching;
+    public bool IsSprinting => isSprinting;
+    public bool IsJumping => isJumping;
     public float MouseSensitivity => mouseSensitivity;
     public float MaxPlanarSpeed => maxSprintingPlanarSpeed;
     public float CrouchingSpeedReduction => maxCrouchingPlanarspeed / maxWalkPlanarSpeed;
@@ -66,8 +70,12 @@ public class PlayerMovement : MonoBehaviour {
         transform.Rotate(transform.up * inputMouse.x * Time.deltaTime * mouseSensitivity * 1.5f);
 
         isJumping = isJumping || Input.GetButtonDown("Jump");
-        isSprinting = Input.GetButton("Sprint");
-        isCrouching = Input.GetButton("Crouch");
+
+        bool isStrafing = Mathf.Round(Input.GetAxis("Horizontal")) != 0f;
+        bool isMovingForward = Input.GetAxis("Vertical") > 0f && !isStrafing;
+
+        isSprinting = Input.GetButton("Sprint") && isMovingForward;
+        isCrouching = Input.GetButton("Crouch") && !isSprinting && !isStrafing;
     }
 
     bool CheckIfAgainstWall(out Vector3 oppositeDirection) {
@@ -182,8 +190,10 @@ public class PlayerMovement : MonoBehaviour {
     }
 
     void PlayJumpFX() {
-        jumpFX.transform.forward = -movementVector;
-        jumpFX.Play();
+        if (jumpFX) {
+            jumpFX.transform.forward = -movementVector;
+            jumpFX.Play();
+        }
     }
     void ApplyMovementVector() {
 

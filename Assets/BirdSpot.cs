@@ -4,32 +4,20 @@ using UnityEngine;
 
 public class BirdSpot : MonoBehaviour
 {
-    public bool IsSafe {get; private set;}
-
     public bool isRestingSpot = false;
-
-    public Bird currentBird;
 
     public float safeDistance = 2f;
 
-    private static List<BirdSpot> spots = new List<BirdSpot>();
+    public static List<BirdSpot> spots = new List<BirdSpot>();
 
-    private static List<BirdSpot> RestingSpots => spots.FindAll(o=>o.isRestingSpot);
+    public int id;
 
-    private static List<BirdSpot> SafeGroundSpots => spots.FindAll(o=>!o.isRestingSpot && o.IsSafe);
-
-    public static BirdSpot GetSafeGroundSpot(){
-        var safeSpots = SafeGroundSpots.FindAll(o=>o.currentBird == null);
-        if (safeSpots.Count <= 0){
-            return null;
-        }
-
-        return safeSpots[Random.Range(0, safeSpots.Count)];
+    public static BirdSpot GetSpotWithID(int id) {
+        return spots.Find(o => o.id == id);
     }
 
-    public static BirdSpot GetRestingSpot(){
-        var restSpots = RestingSpots.FindAll(o=>o.currentBird == null);
-        return restSpots[Random.Range(0, restSpots.Count)];
+    public static BirdSpot GetUnusedSpot() {
+        return spots.Find(o => o.id == 0);
     }
 
     void Awake()
@@ -37,9 +25,6 @@ public class BirdSpot : MonoBehaviour
         spots.Add(this);
     }
 
-    void Update(){
-        IsSafe = Game.i.players.FindAll(o=>Vector3.Distance(o.transform.position, transform.position) < safeDistance).Count < 0;
-    }
 
 #if UNITY_EDITOR
     void OnDrawGizmos(){
