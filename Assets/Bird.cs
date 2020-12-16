@@ -1,46 +1,76 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Bird : MonoBehaviour
-{
+public class Bird : MonoBehaviour {
     [SerializeField] float flightTime = 2f;
+    [SerializeField] ParticleSystem shuriken;
 
     public BirdSpot currentSpot;
     public Animator birdAnimator;
 
     public int id;
+    public float timeout = 10f;
+
     bool isFlying = false;
     bool isOnGround = false;
+    DateTime lastUpdate = DateTime.Now;
 
     // Start is called before the first frame update
     void Start() {
         RefreshFromSpot();
     }
 
+    private void Update() {
+        birdAnimator.SetBool("IsFlying", isFlying);
+
+        if ((DateTime.Now - lastUpdate).TotalSeconds > timeout) {
+            // glitched
+            Kill();
+        }
+    }
+
     public void RefreshFromSpot() {
+        lastUpdate = DateTime.Now;
         transform.position = currentSpot.transform.position;
         transform.LookAt(new Vector3(0, transform.position.y, 0));
     }
 
-    public void Flap(){
-        Debug.Log("Flap");
+    public void Flap() {
+        lastUpdate = DateTime.Now;
         transform.LookAt(new Vector3(0, transform.position.y, 0));
+        birdAnimator.SetTrigger("OnFlap");
         // Play flap animation
     }
 
-    public void Hop(){
-        Vector3 targetPosition = Vector3.Lerp(transform.position + Vector3.right * Random.value + Vector3.up * Random.value, currentSpot.transform.position, 0.5f);
+    public void Hop() {
+        lastUpdate = DateTime.Now;
+        Vector3 targetPosition = Vector3.Lerp(transform.position + Vector3.right * UnityEngine.Random.value + Vector3.forward * UnityEngine.Random.value, currentSpot.transform.position, 0.5f);
         StartCoroutine(Coroutine_HopTo(targetPosition));
+        birdAnimator.SetTrigger("OnHop");
     }
 
     public void PickGrain() {
-        Debug.Log("Pick");
+        lastUpdate = DateTime.Now;
+        birdAnimator.SetTrigger("OnPick");
         // Play grain animation
     }
 
+    public void Kill(bool withFX=false) {
+        Game.i.deadBirds.Add(id);
 
-    public void FlyTo(BirdSpot spot){
+        if (withFX) {
+            shuriken.Play();
+            shuriken.transform.parent = null;
+            Destroy(shuriken.gameObject, 3f);
+        }
+
+        Destroy(gameObject);
+    }
+
+    public void FlyTo(BirdSpot spot) {
+        lastUpdate = DateTime.Now;
         StartCoroutine(Coroutine_FlyTo(spot));
     }
 
@@ -51,7 +81,8 @@ public class Bird : MonoBehaviour
         float time = 0f;
         float delta = 1 / 60f;
         Vector3 startPosition = this.transform.position;
-        while(Vector3.Distance(this.transform.position, spot.transform.position) > 0.04f) {
+        while (Vector3.Distance(this.transform.position, spot.transform.position) > 0.04f) {
+            transform.LookAt(spot.transform.position);
             this.transform.position = Vector3.Lerp(startPosition, spot.transform.position, time);
             time += delta / flightTime;
             yield return new WaitForSeconds(delta);
@@ -68,6 +99,19 @@ public class Bird : MonoBehaviour
         for (int i = 1; i <= steps; i++) {
             transform.position = Vector3.Lerp(startPosition, targetPosition, steps / i);
             yield return new WaitForEndOfFrame();
+        }
+
+        transform.LookAt(Vector3.one * (UnityEngine.Random.value * 2 - 1), Vector3.up);
+    }
+
+    private void OnTriggerEnter(Collider other) {
+        var p = other.GetComponentInChildren<PlayerMovement>();
+        if (p) {
+            if (p.IsLocal && !p.IsGrounded) {
+                // Caught!
+                Game.i.SendCaughtBird(this.id);
+                Kill(withFX:true);
+            }
         }
     }
 }

@@ -20,6 +20,12 @@ public class BirdSpot : MonoBehaviour
         return spots.Find(o => o.id == 0);
     }
 
+    public static void ClearAll() {
+        foreach(var spot in spots) {
+            spot.id = 0;
+        }
+    }
+
     void Awake()
     {
         spots.Add(this);

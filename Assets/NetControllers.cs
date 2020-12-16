@@ -12,6 +12,7 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
     public const string PROTOCOL_UPDATE_SCORE = "SCO";
     public const string PROTOCOL_STATE = "STT";
     public const string PROTOCOL_ACKNOWLEDGE_STATE = "AKS";
+    public const string PROTOCOL_KILL_PLAYER = "KIL";
 
     public NetControllers() {
         Add(PROTOCOL_MOVESTATE, MovePlayer);
@@ -20,6 +21,7 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
         Add(PROTOCOL_UPDATE_SCORE, UpdateScores);
         Add(PROTOCOL_ACKNOWLEDGE_STATE, null);
         Add(PROTOCOL_STATE, InitializeState);
+        Add(PROTOCOL_KILL_PLAYER, KillPlayer);
     }
 
     void MovePlayer(NativeWebSocket.WebSocket ws, string data) {
@@ -39,9 +41,20 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
 
         player.UpdatePosition(reDeser);
     }
+
+    void KillPlayer(NativeWebSocket.WebSocket ws, string data) {
+        var id = Convert.ToInt32(data);
+
+        Game.i.KillPlayer(id);
+    }
+
     void UpdateBirds(NativeWebSocket.WebSocket ws, string data) {
         var birdInfo = JsonConvert.DeserializeObject<BirdInfo>(data);
         Bird bird;
+
+        if (Game.i.deadBirds.Contains(birdInfo.birdId)) {
+            return;
+        }
 
         if ((bird = Game.i.Birds.Find(o=>o.id == birdInfo.birdId)) == null) {
             bird = UnityEngine.Object.Instantiate(Game.i.birdPrefab).GetComponent<Bird>();
@@ -78,16 +91,33 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
 
     }
     void UpdateScores(NativeWebSocket.WebSocket ws, string data) {
+        var state = JsonConvert.DeserializeObject<ScoreInfo>(data);
 
+        if (state.deadBird > 0) {
+            var bird = Game.i.Birds.Find(o => o.id == state.deadBird);
+
+            if (bird && !Game.i.deadBirds.Contains(state.deadBird)) {
+                bird.Kill();
+            }
+        }
+
+        Game.i.SetScore(state.clientId, state.newScore);
     }
 
     void InitializeState(NativeWebSocket.WebSocket ws, string data) {
         var state = JsonConvert.DeserializeObject<GameState>(data);
 
+        BirdSpot.ClearAll();
+
+        Game.i.KillBowls();
+
         Game.i.DestroyAllPlayers();
+
+        Game.i.deadBirds.Clear();
 
         foreach (var client in state.clients) {
             var splitRot = client.rotation.Split(' ');
+            Debug.Log("Spawning client " + client.id);
             Game.i.SpawnPlayer(
                 client.id,
                 new Vector3(client.position.x, client.position.y, client.position.z),
@@ -103,7 +133,18 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
             realSpot.isRestingSpot = spot.isSafe;
         }
 
+        foreach(var score in state.scores) {
+
+        }
+
         ws.SendText(PROTOCOL_ACKNOWLEDGE_STATE);
+    }
+
+    [Serializable]
+    public class ScoreInfo {
+        public int deadBird = -1;
+        public int newScore = 1;
+        public int clientId = -1;
     }
 
     [Serializable]
@@ -121,6 +162,7 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
         public List<Client> clients;
         public List<SerializedBird> birds;
         public List<DumpBirdSpot> birdSpots;
+        public Dictionary<string, string> scores;
     }
 
     [Serializable]

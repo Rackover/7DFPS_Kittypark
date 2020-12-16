@@ -15,11 +15,14 @@ public class Player : MonoBehaviour {
     public PlayerMovement movement;
     public int id = 0;
     public float catchUpSpeed = 4f;
+    public ParticleSystem jumpShuriken;
+    public TextMesh textMesh;
 
     NetControllers.DeserializedPlayerMove previousMovement;
     NetControllers.DeserializedPlayerMove targetMovement;
 
     float timer = 0f;
+    bool isJumping;
 
     private void Awake() {
         FPSContainer.SetActive(false);
@@ -51,7 +54,19 @@ public class Player : MonoBehaviour {
             externalAnimator.SetBool("IsRunning", targetMovement.isRunning);
             externalAnimator.SetBool("IsSneaking", targetMovement.isSneaking && !targetMovement.isRunning);
             externalAnimator.SetBool("IsJumping", targetMovement.isJumping);
+
+            if (targetMovement.isJumping) {
+                if (!isJumping) {
+                    jumpShuriken.Play();
+                }
+                isJumping = true;
+            }
+            else {
+                isJumping = false;
+            }
         }
+
+        textMesh.text = Game.i.GetNameForId(id);
     }
 
     private void FixedUpdate() {

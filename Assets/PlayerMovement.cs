@@ -38,7 +38,7 @@ public class PlayerMovement : MonoBehaviour {
     public float MaxPlanarSpeed => maxSprintingPlanarSpeed;
     public float CrouchingSpeedReduction => maxCrouchingPlanarspeed / maxWalkPlanarSpeed;
 
-    public bool IsLocal { get; private set; }
+    public bool IsLocal => playerScript.IsLocal;
 
     Vector3 movementVector = Vector3.zero;
 
