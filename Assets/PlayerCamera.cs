@@ -28,6 +28,7 @@ public class PlayerCamera : MonoBehaviour {
     public PlayerMovement player;
     public Weapon weapon;
 
+    float lastWalkSound;
     float smoothPlayerSpeedAmount = 0f;
     float currentTilt = 0f;
     new Camera camera;
@@ -63,6 +64,33 @@ public class PlayerCamera : MonoBehaviour {
         target += transform.right * bobDisplacement.x;
         target += transform.up * bobDisplacement.y;
         transform.position = Vector3.Lerp(transform.position, target, catchUpSpeed * Time.deltaTime);
+
+        if (speedAmountForBob > 0.1) {
+            if (player.IsGrounded) {
+                AudioClip clip;
+                float delay;
+
+                if (player.IsSprinting) {
+                    clip = playerScript.sprintClip;
+                    delay = 0.45f;
+                }
+                else if (player.IsCrouching) {
+                    clip = playerScript.crouchClip;
+                    delay = 1f;
+                }
+                else {
+                    // Walking
+                    clip = playerScript.walkClip;
+                    delay = 0.33f;
+                }
+
+                if (Time.time - lastWalkSound > delay) {
+                    lastWalkSound = Time.time;
+                    playerScript.source.PlayOneShot(clip);
+                }
+            }
+        }
+
 
         // Unused
         if (weapon) {

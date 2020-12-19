@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
 using UnityEngine;
 
@@ -13,6 +14,7 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
     public const string PROTOCOL_STATE = "STT";
     public const string PROTOCOL_ACKNOWLEDGE_STATE = "AKS";
     public const string PROTOCOL_KILL_PLAYER = "KIL";
+    public const string PROTOCOL_MEOW = "MEW";
 
     public NetControllers() {
         Add(PROTOCOL_MOVESTATE, MovePlayer);
@@ -22,6 +24,7 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
         Add(PROTOCOL_ACKNOWLEDGE_STATE, null);
         Add(PROTOCOL_STATE, InitializeState);
         Add(PROTOCOL_KILL_PLAYER, KillPlayer);
+        Add(PROTOCOL_MEOW, MakeMeow);
     }
 
     void MovePlayer(NativeWebSocket.WebSocket ws, string data) {
@@ -48,6 +51,12 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
         Game.i.KillPlayer(id);
     }
 
+    void MakeMeow(NativeWebSocket.WebSocket ws, string data) {
+        var id = Convert.ToInt32(data);
+
+        Game.i.GetPlayerById(id)?.Meow();
+    }
+
     void UpdateBirds(NativeWebSocket.WebSocket ws, string data) {
         var birdInfo = JsonConvert.DeserializeObject<BirdInfo>(data);
         Bird bird;
@@ -56,14 +65,17 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
             return;
         }
 
+        BirdSpot spot = BirdSpot.GetSpotWithID(birdInfo.spotId);
+        if (spot == null) {
+            Debug.LogError("Found no spot with id " + birdInfo.spotId + ". Spots are (" + string.Join(", ", BirdSpot.spots.Select(o => o.id)) + ")");
+            return;
+        }
+
         if ((bird = Game.i.Birds.Find(o=>o.id == birdInfo.birdId)) == null) {
             bird = UnityEngine.Object.Instantiate(Game.i.birdPrefab).GetComponent<Bird>();
-            bird.currentSpot = BirdSpot.GetSpotWithID(birdInfo.spotId);
-            if (bird.currentSpot == null) {
-                Debug.LogError("Foudn no spot with id " + birdInfo.spotId);
-            }
-            
             bird.id = birdInfo.birdId;
+
+            bird.currentSpot = spot;
             bird.RefreshFromSpot();
 
             Game.i.Birds.Add(bird);
@@ -71,6 +83,11 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
 
         else if (birdInfo.isFlying) {
             bird.FlyTo(BirdSpot.GetSpotWithID(birdInfo.spotId));
+            return;
+        }
+
+        if (birdInfo.isHeartbeat) {
+            bird.Heartbeat();
             return;
         }
 
@@ -97,7 +114,7 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
             var bird = Game.i.Birds.Find(o => o.id == state.deadBird);
 
             if (bird && !Game.i.deadBirds.Contains(state.deadBird)) {
-                bird.Kill();
+                bird.Kill(withFX: true);
             }
         }
 
@@ -127,6 +144,7 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
         }
 
         foreach(var spot in state.birdSpots) {
+            Debug.Log("Loading bird spot "+spot.id);
             var realSpot = BirdSpot.GetUnusedSpot();
             realSpot.id = spot.id;
             realSpot.transform.position = new Vector3(spot.position.x, spot.position.y, spot.position.z);
@@ -137,6 +155,7 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
 
         }
 
+        Debug.Log("Sending ACK");
         ws.SendText(PROTOCOL_ACKNOWLEDGE_STATE);
     }
 
@@ -155,6 +174,7 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
         public bool isFlapping = false;
         public bool isHop = false;
         public bool isFlying = false;
+        public bool isHeartbeat = false;
     }
 
     [Serializable]
@@ -162,7 +182,7 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
         public List<Client> clients;
         public List<SerializedBird> birds;
         public List<DumpBirdSpot> birdSpots;
-        public Dictionary<string, string> scores;
+        public Dictionary<string, string> scores = new Dictionary<string, string>();
     }
 
     [Serializable]

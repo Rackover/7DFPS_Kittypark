@@ -5,12 +5,23 @@ using UnityEngine;
 public class Player : MonoBehaviour {
     public bool IsLocal { get; set; } = false;
 
+    public AudioClip sprintClip;
+    public AudioClip crouchClip;
+    public AudioClip walkClip;
+    public AudioClip landClip;
+    public AudioClip jumpClip;
+
     public GameObject FPSContainer;
     public GameObject externalViewContainer;
     public Animator externalAnimator;
+    public AudioSource fpsSource;
+    public AudioSource externalSource;
+    public AudioSource source => IsLocal ? fpsSource : externalSource;
 
+    public AudioClip[] meows;
     public Texture[] furTextures;
     public Renderer bodyRenderer;
+    public Renderer pawsRenderer;
 
     public PlayerMovement movement;
     public int id = 0;
@@ -33,11 +44,25 @@ public class Player : MonoBehaviour {
     void Start() {
         if (IsLocal) {
             FPSContainer.SetActive(true);
+            pawsRenderer.material.mainTexture = furTextures[id % furTextures.Length];
         }
         else {
             externalViewContainer.SetActive(true);
             bodyRenderer.material.mainTexture = furTextures[id % furTextures.Length];
         }
+    }
+
+    private void OnDestroy() {
+        if (IsLocal) {
+            Destroy(pawsRenderer.material);
+        }
+        else {
+            Destroy(bodyRenderer.material);
+        }
+    }
+
+    public void Meow() {
+        source.PlayOneShot(meows[id % meows.Length]);
     }
 
     private void Update() {
@@ -58,6 +83,7 @@ public class Player : MonoBehaviour {
             if (targetMovement.isJumping) {
                 if (!isJumping) {
                     jumpShuriken.Play();
+                    source.PlayOneShot(jumpClip);
                 }
                 isJumping = true;
             }

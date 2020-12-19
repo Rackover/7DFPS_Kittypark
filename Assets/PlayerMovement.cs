@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour {
-    [SerializeField] Player playerScript;
+    public Player playerScript;
 
     [SerializeField] private float mouseSensitivity = 20f;
     [SerializeField] private float gravity = 20f;
@@ -76,6 +76,10 @@ public class PlayerMovement : MonoBehaviour {
 
         isSprinting = Input.GetButton("Sprint") && isMovingForward;
         isCrouching = Input.GetButton("Crouch") && !isSprinting && !isStrafing;
+
+        if (Input.GetButtonDown("Meow")) {
+            Game.i.SendMeow();
+        }
     }
 
     bool CheckIfAgainstWall(out Vector3 oppositeDirection) {
@@ -110,6 +114,10 @@ public class PlayerMovement : MonoBehaviour {
         bool wasGrounded = isGrounded;
         isGrounded = CheckIfIsGrounded(out float groundDistanceAmount);
 
+        if (isGrounded && !wasGrounded) {
+            playerScript.source.PlayOneShot(playerScript.landClip);
+        }
+
         if (isGrounded) {
             // reset walljump cooldown when grounded
             lastWallJumpTime = 0f;
@@ -140,10 +148,12 @@ public class PlayerMovement : MonoBehaviour {
             }
 
             if (isJumping) {
+
                 if (!hasJumped) {
                     localMovementVector.y = jumpForce;
                     PlayJumpFX();
                     hasJumped = true;
+                    isGrounded = false;
                 }
             }
             else {
@@ -160,6 +170,7 @@ public class PlayerMovement : MonoBehaviour {
                 ////StartCoroutine(LookToSmoothly(wallJumpDirection));
 
                 hasJumped = true;
+                isGrounded = false;
             }
             else {
                 localMovementVector.y = Mathf.Max(localMovementVector.y - gravity * Time.deltaTime, -maxFallSpeed);
@@ -194,6 +205,8 @@ public class PlayerMovement : MonoBehaviour {
             jumpFX.transform.forward = -movementVector;
             jumpFX.Play();
         }
+
+        playerScript.source.PlayOneShot(playerScript.jumpClip);
     }
     void ApplyMovementVector() {
 

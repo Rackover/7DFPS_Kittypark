@@ -6,6 +6,9 @@ using UnityEngine;
 public class Bird : MonoBehaviour {
     [SerializeField] float flightTime = 2f;
     [SerializeField] ParticleSystem shuriken;
+    [SerializeField] AudioSource source;
+    [SerializeField] AudioClip flap;
+    [SerializeField] AudioClip dieSound;
 
     public BirdSpot currentSpot;
     public Animator birdAnimator;
@@ -27,6 +30,7 @@ public class Bird : MonoBehaviour {
 
         if ((DateTime.Now - lastUpdate).TotalSeconds > timeout) {
             // glitched
+            Debug.Log("Killing bird "+id+" because no info since "+ (DateTime.Now - lastUpdate).TotalSeconds+" seconds, assuming it's glitched");
             Kill();
         }
     }
@@ -41,7 +45,12 @@ public class Bird : MonoBehaviour {
         lastUpdate = DateTime.Now;
         transform.LookAt(new Vector3(0, transform.position.y, 0));
         birdAnimator.SetTrigger("OnFlap");
+        source.PlayOneShot(flap);
         // Play flap animation
+    }
+
+    public void Heartbeat() {
+        lastUpdate = DateTime.Now;
     }
 
     public void Hop() {
@@ -110,6 +119,7 @@ public class Bird : MonoBehaviour {
             if (p.IsLocal && !p.IsGrounded) {
                 // Caught!
                 Game.i.SendCaughtBird(this.id);
+                p.playerScript.source.PlayOneShot(dieSound);
                 Kill(withFX:true);
             }
         }

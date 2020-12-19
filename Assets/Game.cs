@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using UnityEngine;
 
 public class Game : MonoBehaviour {
@@ -33,10 +32,7 @@ public class Game : MonoBehaviour {
     void Awake() {
         i = this;
 
-        ConnectSocket();
-    }
-
-    private void Start() {
+        StartCoroutine(ConnectSocket());
 
         names.Add("Pantoufle");
         names.Add("Luna");
@@ -64,6 +60,10 @@ public class Game : MonoBehaviour {
         names.Add("Mimi");
         names.Add("Elysion");
         names.Add("Diva");
+    }
+
+    private void Start() {
+
 
 #if UNITY_EDITOR
         int i = 0;
@@ -81,7 +81,7 @@ public class Game : MonoBehaviour {
 #endif
     }
 
-    async void ConnectSocket() {
+    IEnumerator ConnectSocket() {
         while (true) {
 #if UNITY_EDITOR
             if (!UnityEditor.EditorApplication.isPlaying) {
@@ -90,18 +90,18 @@ public class Game : MonoBehaviour {
 #endif
 
             if (connectionState == E_ConnectionState.OK) {
-                await Task.Delay(1000);
+                yield return new WaitForSeconds(4f);
                 continue;
             }
 
-            await InitWebSock();
-
+            InitWebSock();
+            yield return new WaitForSeconds(4f);
         }
     }
 
-    async Task InitWebSock() {
+    async void InitWebSock() {
         connectionState = E_ConnectionState.CONNECTING;
-        websocket = new WebSocket("ws://racksberry:1234");
+        websocket = new WebSocket("wss://kittypark.louve.systems");
 
         websocket.OnOpen += () => {
             connectionState = E_ConnectionState.OK;
@@ -123,7 +123,7 @@ public class Game : MonoBehaviour {
                 string controller = message.Substring(0, 3);
                 message = message.Substring(3);
 
-                Debug.Log(controller + " => " + message);
+                ////Debug.Log(controller + " => " + message);
 
                 if (controllers.ContainsKey(controller)) {
                     controllers[controller].Invoke(websocket, message);
@@ -158,16 +158,25 @@ public class Game : MonoBehaviour {
 
         Bowl bowl;
         if (pooledBowls.Count > 0) {
+            Debug.Log("Pooling out one bowl for " + id);
             bowl = pooledBowls[0];
+            bowl.gameObject.SetActive(true);
             pooledBowls.RemoveAt(0);
         }
         else {
+            Debug.Log("Creating new bowl for " + id);
             bowl = Object.Instantiate(bowlPrefab).GetComponent<Bowl>();
         }
 
         bowl.playerId = player.id;
+
+        Debug.Log("Updating bowl");
         bowl.UpdateBowl();
+
+        Debug.Log("Updating bowl size");
         bowl.UpdateSize();
+        
+        Debug.Log("Updating bowl size");
         bowl.transform.position = bowlSpawnPoint - Vector3.right * usedBowls.Count;
 
         usedBowls[player.id] = bowl;
@@ -207,6 +216,10 @@ public class Game : MonoBehaviour {
         websocket.SendText(NetControllers.PROTOCOL_CATCH + birdId);
     }
 
+    public void SendMeow() {
+        websocket.SendText(NetControllers.PROTOCOL_MEOW);
+    }
+
     public void SetScore(int clientId, int score) {
         if (GetPlayerById(clientId) != null) {
             if (!scores.ContainsKey(clientId) || scores[clientId] < score) {
@@ -220,10 +233,12 @@ public class Game : MonoBehaviour {
     }
 
     public int GetScore(int clientId) {
+        Debug.Log("Getting score for client ID " + clientId);
         return scores.ContainsKey(clientId) ? scores[clientId] : 0;
     }
 
     public string GetNameForId(int clientId) {
+        Debug.Log("Getting name for client ID " + clientId + " among " + names.Count + " possibilities");
         return names[clientId % names.Count];
     }
 
@@ -231,7 +246,6 @@ public class Game : MonoBehaviour {
 #if !UNITY_WEBGL || UNITY_EDITOR
         websocket.DispatchMessageQueue();
 #endif
-        UpdateBowls();
     }
 
     public void KillPlayer(int id) {
@@ -244,7 +258,8 @@ public class Game : MonoBehaviour {
     }
 
     public void KillBowls() {
-        foreach(var bowl in usedBowls.Values) {
+        var arr = usedBowls.Values.ToArray();
+        foreach (var bowl in arr) {
             KillBowl(bowl.playerId);
         }
 
@@ -257,12 +272,6 @@ public class Game : MonoBehaviour {
             usedBowls.Remove(playerId);
             bowl.gameObject.SetActive(false);
             pooledBowls.Add(bowl);
-        }
-    }
-
-    void UpdateBowls() {
-        foreach(var player in Game.i.Players) {
-
         }
     }
 }
