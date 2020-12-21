@@ -7,6 +7,8 @@ public class LookAtLocal : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        transform.LookAt(Game.i.LocalPlayer.movement.transform.position);
+        if (Game.i.LocalPlayer) {
+            transform.LookAt(Game.i.LocalPlayer.movement.transform.position);
+        }
     }
 }

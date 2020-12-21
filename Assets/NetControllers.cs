@@ -34,7 +34,7 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
 
         if (player == null) {
             Debug.Log("Spawning new unknown player " + move.id);
-            player = Game.i.SpawnPlayer(move.id, reDeser.position, reDeser.rotation, isLocal:false);
+            player = Game.i.SpawnPlayer(move.id, reDeser.position, reDeser.rotation, isLocal: false);
         }
 
         if (player.IsLocal) {
@@ -47,6 +47,8 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
 
     void KillPlayer(NativeWebSocket.WebSocket ws, string data) {
         var id = Convert.ToInt32(data);
+
+        Debug.Log("Killing player " + id);
 
         Game.i.KillPlayer(id);
     }
@@ -71,7 +73,7 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
             return;
         }
 
-        if ((bird = Game.i.Birds.Find(o=>o.id == birdInfo.birdId)) == null) {
+        if ((bird = Game.i.Birds.Find(o => o.id == birdInfo.birdId)) == null) {
             bird = UnityEngine.Object.Instantiate(Game.i.birdPrefab).GetComponent<Bird>();
             bird.id = birdInfo.birdId;
 
@@ -134,29 +136,35 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
 
         foreach (var client in state.clients) {
             var splitRot = client.rotation.Split(' ');
-            Debug.Log("Spawning client " + client.id);
+            Debug.Log("Spawning client " + client.id+" (observer? "+client.isObserver+")");
+
+            if (client.isObserver) {
+                return;
+            }
+
             Game.i.SpawnPlayer(
                 client.id,
                 new Vector3(client.position.x, client.position.y, client.position.z),
                 new Quaternion(Convert.ToSingle(splitRot[0]), Convert.ToSingle(splitRot[1]), Convert.ToSingle(splitRot[2]), Convert.ToSingle(splitRot[3])),
                 isLocal: client.isYou
             );
+            
         }
 
-        foreach(var spot in state.birdSpots) {
-            Debug.Log("Loading bird spot "+spot.id);
+        foreach (var spot in state.birdSpots) {
+            Debug.Log("Loading bird spot " + spot.id);
             var realSpot = BirdSpot.GetUnusedSpot();
             realSpot.id = spot.id;
             realSpot.transform.position = new Vector3(spot.position.x, spot.position.y, spot.position.z);
             realSpot.isRestingSpot = spot.isSafe;
         }
 
-        foreach(var score in state.scores) {
-
+        foreach (var score in state.scores) {
+            Game.i.SetScore(Convert.ToInt32(score.Key), Convert.ToInt32(score.Value));
         }
 
         Debug.Log("Sending ACK");
-        ws.SendText(PROTOCOL_ACKNOWLEDGE_STATE);
+        ws.SendText(PROTOCOL_ACKNOWLEDGE_STATE + (Game.i.IsMobile ? "observer" : ""));
     }
 
     [Serializable]
@@ -230,6 +238,7 @@ public class NetControllers : Dictionary<string, Action<NativeWebSocket.WebSocke
         public Position position;
         public string rotation;
         public bool isYou = false;
+        public bool isObserver = false;
     }
 
     [Serializable]

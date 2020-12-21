@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Player : MonoBehaviour {
     public bool IsLocal { get; set; } = false;
-
+    
     public AudioClip sprintClip;
     public AudioClip crouchClip;
     public AudioClip walkClip;
@@ -96,7 +96,7 @@ public class Player : MonoBehaviour {
     }
 
     private void FixedUpdate() {
-        if (IsLocal) {
+        if (IsLocal && !Game.i.IsMobile) {
             Game.i.SendMyPosition(movement.transform.position, movement.transform.rotation, movement);
         }
     }

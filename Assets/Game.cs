@@ -11,11 +11,14 @@ public class Game : MonoBehaviour {
     public List<Bird> Birds { get; set; } = new List<Bird>();
     public Player LocalPlayer { get; private set; }
 
+    public bool IsMobile { get; private set; }
+
     public List<int> deadBirds = new List<int>();
 
     public GameObject birdPrefab;
     [SerializeField] private GameObject playerPrefab;
     [SerializeField] private GameObject bowlPrefab;
+    [SerializeField] private GameObject mobileCamera;
 
     WebSocket websocket;
     NetControllers controllers = new NetControllers();
@@ -29,10 +32,18 @@ public class Game : MonoBehaviour {
 
     List<string> names = new List<string>();
 
+    [System.Runtime.InteropServices.DllImport("__Internal")]
+    private static extern bool checkIfMobile();
+
+    private bool CheckIfMobile() {
+#if !UNITY_EDITOR && UNITY_WEBGL
+             return checkIfMobile();
+#endif
+        return false;
+    }
+
     void Awake() {
         i = this;
-
-        StartCoroutine(ConnectSocket());
 
         names.Add("Pantoufle");
         names.Add("Luna");
@@ -60,6 +71,21 @@ public class Game : MonoBehaviour {
         names.Add("Mimi");
         names.Add("Elysion");
         names.Add("Diva");
+        names.Add("Lucius");
+        names.Add("Chat"); 
+        names.Add("Plume");
+        names.Add("Peluche");
+        names.Add("Moumoune");
+        names.Add("Zarac");
+        names.Add("Sweety");
+        names.Add("Lady");
+        names.Add("Chichi");
+        names.Add("Salem");
+
+        StartCoroutine(ConnectSocket());
+
+        IsMobile = CheckIfMobile();
+        mobileCamera.SetActive(IsMobile);
     }
 
     private void Start() {
@@ -144,12 +170,16 @@ public class Game : MonoBehaviour {
     }
 
     public Player SpawnPlayer(int id, Vector3 position, Quaternion rotation, bool isLocal = false) {
+        if (isLocal && IsMobile) {
+            return null;
+        }
+
         var player = Object.Instantiate(playerPrefab).GetComponent<Player>();
         player.id = id;
         player.transform.position = position;
         player.transform.rotation = rotation;
         player.IsLocal = isLocal;
-
+        
         if (player.IsLocal) {
             LocalPlayer = player;
         }
@@ -238,7 +268,7 @@ public class Game : MonoBehaviour {
     }
 
     public string GetNameForId(int clientId) {
-        Debug.Log("Getting name for client ID " + clientId + " among " + names.Count + " possibilities");
+        ////Debug.Log("Getting name for client ID " + clientId + " among " + names.Count + " possibilities");
         return names[clientId % names.Count];
     }
 

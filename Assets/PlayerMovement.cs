@@ -27,6 +27,7 @@ public class PlayerMovement : MonoBehaviour {
     [SerializeField] private SphereCollider wallJumpTrigger;
     [SerializeField] private new PlayerCamera camera;
     [SerializeField] private ParticleSystem jumpFX;
+    [SerializeField] private float killZ = -50f;
 
     public float Speed => Vector3.Scale(Vector3.right + Vector3.forward, body.velocity).magnitude;
     public bool IsGrounded => isGrounded;
@@ -110,6 +111,13 @@ public class PlayerMovement : MonoBehaviour {
     }
 
     private void FixedUpdate() {
+
+        if (transform.position.y < killZ) {
+            transform.position = new Vector3(5f, 2f, 5F);
+            movementVector = Vector3.zero;
+            ApplyMovementVector();
+            return;
+        }
 
         bool wasGrounded = isGrounded;
         isGrounded = CheckIfIsGrounded(out float groundDistanceAmount);
