@@ -16,6 +16,8 @@ public class Game : MonoBehaviour {
     public List<int> deadBirds = new List<int>();
 
     public GameObject birdPrefab;
+
+    [SerializeField] private bool forceMobile;
     [SerializeField] private GameObject playerPrefab;
     [SerializeField] private GameObject bowlPrefab;
     [SerializeField] private GameObject mobileCamera;
@@ -39,7 +41,7 @@ public class Game : MonoBehaviour {
 #if !UNITY_EDITOR && UNITY_WEBGL
              return checkIfMobile();
 #endif
-        return false;
+        return forceMobile;
     }
 
     void Awake() {

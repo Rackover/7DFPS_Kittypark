@@ -3,7 +3,12 @@ guid: 651f35b23781d3a4dbb0a5da77fe62f7
 ModelImporter:
   serializedVersion: 20101
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Maptex001
+    second: {fileID: 2100000, guid: f47da2ed46e64b6428c44a0df23465c2, type: 2}
   materials:
     materialImportMode: 1
     materialName: 0

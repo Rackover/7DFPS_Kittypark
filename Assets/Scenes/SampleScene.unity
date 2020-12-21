@@ -11273,6 +11273,7 @@ MonoBehaviour:
   deadBirds: 
   birdPrefab: {fileID: 4984182724526771397, guid: 5cddebd046ca86b4babedf23026a4fed,
     type: 3}
+  forceMobile: 0
   playerPrefab: {fileID: 9029299435881819840, guid: 9c5e4248a02f2a048bb2945b11fab1a1,
     type: 3}
   bowlPrefab: {fileID: 9104287469462869093, guid: 22ad6e5392976bf479304ef2d17bafcd,
